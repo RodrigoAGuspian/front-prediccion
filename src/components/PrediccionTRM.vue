@@ -1,102 +1,83 @@
 <template>
-  <div class="max-w-5xl mx-auto py-10 px-4">
-
-    <!-- TÍTULO -->
-    <h1 class="text-4xl font-bold mb-10 text-center text-gray-800">
-      📊 Predicción y Comparación TRM – Dashboard
+  <div class="dashboard-container">
+    <h1 class="dashboard-title">
+      📈 Predicción TRM – Dashboard
     </h1>
-
-    <!-- BOTÓN PRINCIPAL -->
-    <div class="flex justify-center mb-8">
+    
+    <div class="button-container">
       <button
         @click="cargarTodo"
-        class="px-6 py-3 bg-blue-600 text-white text-lg rounded-xl shadow hover:bg-blue-700 transition"
-      >
+        class="update-button">
         Actualizar datos
       </button>
     </div>
 
-    <!-- CARGANDO -->
-    <div v-if="cargando" class="text-center text-gray-600 text-lg">
-      Cargando datos, por favor espera...
+    <div class="status-container">
+      <div v-if="cargando" class="loading-message">
+        ⏳ Cargando datos, por favor espera...
+      </div>
+      <div v-if="error" class="error-message">
+        ⚠️ {{ error }}
+      </div>
     </div>
 
-    <!-- ERROR -->
-    <div
-      v-if="error"
-      class="bg-red-100 text-red-700 p-4 rounded-lg text-center max-w-xl mx-auto mb-6"
-    >
-      {{ error }}
-    </div>
-
-    <!-- TARJETAS DE VALORES -->
-    <div v-if="!cargando" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-
-      <!-- TRM REAL -->
-      <div class="bg-white p-6 rounded-2xl shadow border">
-        <p class="text-gray-500 text-sm">Último valor TRM</p>
-        <p class="text-3xl font-bold text-green-600">
-          {{ ultimoReal ? ultimoReal + ' COP' : '---' }}
+    <div v-if="!cargando" class="cards-grid">
+      <div class="card">
+        <p class="card-label">
+          Último TRM conocido
         </p>
+        <p class="card-value trm-value">
+          {{ ultimoReal ? formatoCOP(ultimoReal) : '---' }}
+        </p>
+        <span
+          class="tendencia-badge"
+          :class="badgeClass">
+          {{ tendenciaTexto }}
+        </span>
       </div>
 
-      <!-- PREDICCIÓN -->
-      <div class="bg-white p-6 rounded-2xl shadow border">
-        <p class="text-gray-500 text-sm">Predicción para mañana</p>
-        <p class="text-3xl font-bold text-blue-600">
-          {{ prediccion.length ? prediccion[0] + ' COP' : '---' }}
+      <div class="card">
+        <p class="card-label">
+          Diferencia de mañana
         </p>
-      </div>
-
-      <!-- DIFERENCIA -->
-      <div class="bg-white p-6 rounded-2xl shadow border">
-        <p class="text-gray-500 text-sm">Diferencia (%)</p>
-        <p
-          class="text-3xl font-bold"
-          :class="diferenciaColor"
-        >
+        <p class="card-value" :class="diferenciaClass">
           {{ diferenciaPorcentaje }}
         </p>
       </div>
     </div>
 
-    <!-- TABLA -->
-    <div class="bg-white p-6 rounded-2xl shadow border mb-10">
-      <h2 class="text-2xl font-semibold mb-4">Tabla comparativa (7 días)</h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-center text-sm border-collapse">
-          <thead class="bg-gray-100 text-gray-700">
+    <div class="table-container">
+      <h2 class="section-title">
+        📅 Predicciones TRM próximos 7 días
+      </h2>
+      <div class="table-wrapper">
+        <table class="prediction-table">
+          <thead>
             <tr>
-              <th class="py-2 px-3 border">Fecha</th>
-              <th class="py-2 px-3 border">TRM Real</th>
-              <th class="py-2 px-3 border">Predicción</th>
-              <th class="py-2 px-3 border">Serie Sintética</th>
-              <th class="py-2 px-3 border">Serie Real Ejemplo</th>
+              <th>Fecha</th>
+              <th>Predicción (COP)</th>
+              <th>Serie Sintética</th>
+              <th>Serie Ejemplo</th>
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="(f, i) in fechas"
-              :key="i"
-              class="hover:bg-gray-50"
-            >
-              <td class="py-2 px-3 border">{{ f }}</td>
-              <td class="py-2 px-3 border">{{ trmReal[i] }}</td>
-              <td class="py-2 px-3 border">{{ prediccion[i] }}</td>
-              <td class="py-2 px-3 border">{{ serieSintetica[i] }}</td>
-              <td class="py-2 px-3 border">{{ serieEjemplo[i] }}</td>
+            <tr v-for="(f, i) in fechas" :key="i">
+              <td>{{ f }}</td>
+              <td class="prediction-value">{{ formatoCOP(prediccion[i]) }}</td>
+              <td class="sintetica-value">{{ formatoCOP(serieSintetica[i]) }}</td>
+              <td class="ejemplo-value">{{ formatoCOP(serieEjemplo[i]) }}</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
-
-    <!-- GRÁFICO -->
-    <div class="bg-white p-6 rounded-2xl shadow border">
-      <h2 class="text-2xl font-semibold mb-4">Visualización de Tendencias</h2>
-      <canvas ref="graficoCanvas"></canvas>
+    
+    <div class="chart-container">
+      <h2 class="section-title">
+        Visualización de Tendencias
+      </h2>
+      <canvas ref="graficoCanvas" class="chart-canvas"></canvas>
     </div>
-
   </div>
 </template>
 
@@ -106,101 +87,97 @@ import { Chart, LineController, LineElement, PointElement, LinearScale, Title, C
 Chart.register(LineController, LineElement, PointElement, LinearScale, Title, CategoryScale, Legend);
 
 export default {
+  name: "DashboardTRM",
   data() {
     return {
       cargando: false,
       error: null,
-
       fechas: [],
       prediccion: [],
-      trmReal: [],
+      ultimoReal: null,
       serieSintetica: [],
       serieEjemplo: [],
-
-      ultimoReal: null,
       grafico: null
     };
   },
-
   computed: {
     diferenciaPorcentaje() {
       if (!this.ultimoReal || !this.prediccion.length) return "---";
       const dif = ((this.prediccion[0] - this.ultimoReal) / this.ultimoReal) * 100;
-      return dif.toFixed(2) + "%";
+      return (dif >= 0 ? "+" : "") + dif.toFixed(2) + "%";
     },
-    diferenciaColor() {
-      if (!this.prediccion.length || !this.ultimoReal) return "text-gray-800";
-      return this.prediccion[0] >= this.ultimoReal ? "text-red-500" : "text-green-500";
+    diferenciaClass() {
+      return this.prediccion[0] >= this.ultimoReal ? "diferencia-positiva" : "diferencia-negativa";
+    },
+    tendenciaTexto() {
+      if (!this.prediccion.length || !this.ultimoReal) return "Sin datos";
+      return this.prediccion[0] > this.ultimoReal
+        ? "📈 El dólar sube mañana"
+        : this.prediccion[0] < this.ultimoReal
+        ? "📉 El dólar baja mañana"
+        : "➖ Sin cambios significativos";
+    },
+    badgeClass() {
+      if (!this.prediccion.length || !this.ultimoReal) 
+        return 'badge-sin-datos';
+      
+      if (this.prediccion[0] > this.ultimoReal) 
+        return 'badge-sube';
+      
+      if (this.prediccion[0] < this.ultimoReal) 
+        return 'badge-baja';
+      
+      return 'badge-igual';
     }
   },
-
   methods: {
     async cargarTodo() {
       this.cargando = true;
       this.error = null;
-
       try {
         await this.obtenerPrediccion();
-        await this.obtenerTRMReal();
+        await this.obtenerUltimoTRM();
         this.crearSerieSintetica();
         this.crearSerieEjemplo();
         this.dibujarGrafico();
-
       } catch (e) {
         this.error = "Error cargando datos.";
+        console.error(e);
       } finally {
         this.cargando = false;
       }
     },
-
-    // --- Predicción ---
     async obtenerPrediccion() {
       const r = await axios.get("https://back-prediccion.onrender.com/predict/7days");
-      this.prediccion = r.data.forecast_7d;
+      this.prediccion = r.data.forecast_7d || [];
       this.generarFechas();
     },
-
-    // --- TRM REAL ---
-    async obtenerTRMReal() {
-      const r = await axios.get(
-        "https://www.datos.gov.co/resource/mcec-87by.json?$limit=7&$order=vigenciadesde DESC"
-      );
-
-      const valores = r.data.map(x => parseFloat(x.valor));
-      this.ultimoReal = valores[0];
-      this.trmReal = [...valores].reverse();
+    async obtenerUltimoTRM() {
+      const r = await axios.get("https://www.datos.gov.co/resource/mcec-87by.json?$limit=1&$order=vigenciadesde DESC");
+      const valor = r?.data?.[0]?.valor;
+      this.ultimoReal = valor ? parseFloat(valor) : null;
+      if (!this.ultimoReal) throw new Error("No se pudo obtener el último TRM.");
     },
-
-    // --- SERIES ADICIONALES ---
     crearSerieSintetica() {
-      this.serieSintetica = this.prediccion.map(v =>
-        Math.round(v * (0.97 + Math.random() * 0.06))
-      );
+      this.serieSintetica = this.prediccion.map(v => Math.round(v * (0.97 + Math.random() * 0.06)));
     },
-
     crearSerieEjemplo() {
-      this.serieEjemplo = this.trmReal.map(v =>
-        Math.round(v * (0.99 + Math.random() * 0.03))
-      );
+      this.serieEjemplo = this.prediccion.map(v => Math.round(v * (0.99 + Math.random() * 0.03)));
     },
-
-    // --- Fechas ---
     generarFechas() {
       const hoy = new Date();
       this.fechas = [];
-
       for (let i = 1; i <= 7; i++) {
         const f = new Date(hoy);
         f.setDate(hoy.getDate() + i);
-        this.fechas.push(f.toISOString().split("T")[0]);
+        const iso = f.toISOString().split("T")[0];
+        this.fechas.push(iso);
       }
     },
-
-    // --- GRÁFICA ---
     dibujarGrafico() {
       if (this.grafico) this.grafico.destroy();
-
-      const ctx = this.$refs.graficoCanvas.getContext("2d");
+      const ctx = this.$refs.graficoCanvas?.getContext("2d");
+      if (!ctx) return;
 
       this.grafico = new Chart(ctx, {
         type: "line",
@@ -208,51 +185,385 @@ export default {
           labels: this.fechas,
           datasets: [
             {
-              label: "TRM Real",
-              data: this.trmReal,
-              borderColor: "#16a34a",
-              tension: 0.3,
-              borderWidth: 3
-            },
-            {
               label: "Predicción",
               data: this.prediccion,
               borderColor: "#2563eb",
+              backgroundColor: "rgba(37, 99, 235, 0.08)",
               tension: 0.3,
-              borderWidth: 3
+              borderWidth: 3,
+              pointRadius: 2
             },
             {
               label: "Serie Sintética",
               data: this.serieSintetica,
               borderColor: "#f97316",
+              backgroundColor: "rgba(249, 115, 22, 0.08)",
               tension: 0.3,
-              borderWidth: 2
+              borderWidth: 2,
+              pointRadius: 0
             },
             {
               label: "Serie Ejemplo",
               data: this.serieEjemplo,
               borderColor: "#9333ea",
+              backgroundColor: "rgba(147, 51, 234, 0.08)",
               tension: 0.3,
-              borderWidth: 2
+              borderWidth: 2,
+              pointRadius: 0
             }
           ]
         },
         options: {
           responsive: true,
           plugins: {
-            legend: {
-              position: "top",
-              labels: { boxWidth: 20, padding: 20 }
-            }
+            legend: { position: "top", labels: { boxWidth: 20, padding: 20 } },
+            tooltip: { mode: "index", intersect: false }
           },
           scales: {
-            y: {
-              beginAtZero: false
-            }
+            x: { grid: { display: false } },
+            y: { beginAtZero: false, grid: { color: "rgba(156,163,175,0.2)" } }
           }
         }
       });
+    },
+    formatoCOP(n) {
+      if (n == null || Number.isNaN(n)) return "---";
+      return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
     }
+  },
+  mounted() {
+    this.cargarTodo();
   }
 };
 </script>
+
+<style scoped>
+.dashboard-container {
+
+  margin: 0 auto;
+  padding: 64px 16px;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: #f3f4f6;
+  min-height: 100vh;
+}
+
+.dashboard-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 64px;
+  text-align: center;
+  color: #111827;
+  letter-spacing: -0.025em;
+}
+
+.button-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 64px;
+}
+
+.update-button {
+  padding: 16px 40px;
+  background-color: #4f46e5;
+  color: white;
+  font-size: 1.125rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  box-shadow: 0 20px 25px -5px rgba(79, 70, 229, 0.3);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.update-button:hover {
+  transform: scale(1.03);
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.5);
+}
+
+.update-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.7);
+}
+
+/* ESTADOS */
+.status-container {
+  margin-bottom: 64px;
+}
+
+.loading-message {
+  text-align: center;
+  color: #4f46e5;
+  font-size: 1.25rem;
+  margin-bottom: 32px;
+  font-weight: 500;
+}
+
+.error-message {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 36rem;
+  margin: 0 auto;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #fca5a5;
+}
+
+/* CARDS */
+.cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  margin-bottom: 80px;
+}
+
+@media (min-width: 768px) {
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.card {
+  background-color: white;
+  padding: 40px;
+  border-radius: 32px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.3);
+}
+
+.card-label {
+  color: #6b7280;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.card-value {
+  font-size: 3.75rem;
+  font-weight: 800;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.trm-value {
+  color: #1083b9ff;
+}
+
+.diferencia-positiva {
+  color: #10b981;
+}
+
+.diferencia-negativa {
+  color: #ef4444;
+}
+
+/* BADGES */
+.tendencia-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 2px solid white;
+}
+
+.chart-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.badge-sube {
+  background-color: #ef4444;
+  color: white;
+}
+
+.badge-baja {
+  background-color: #10b981;
+  color: white;
+}
+
+.badge-igual {
+  background-color: #6b7280;
+  color: white;
+}
+
+.badge-sin-datos {
+  background-color: #9ca3af;
+  color: white;
+}
+
+/* TABLA */
+.table-container {
+  background-color: white;
+  padding: 32px;
+  border-radius: 32px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  margin-bottom: 80px;
+  border: 1px solid #e5e7eb;
+}
+
+.section-title {
+  font-size: 1.875rem;
+  font-weight: 600;
+  margin-bottom: 32px;
+  color: #1f2937;
+  text-align: center;
+  letter-spacing: -0.025em;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.prediction-table {
+  width: 100%;
+  text-align: center;
+  border-collapse: collapse;
+  font-size: 1rem;
+}
+
+.prediction-table thead {
+  background-color: #eef2ff;
+  color: #4338ca;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.prediction-table th {
+  padding: 16px;
+  border-bottom: 2px solid #c7d2fe;
+}
+
+.prediction-table td {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+  font-weight: 500;
+}
+
+.prediction-table tbody tr:hover {
+  background-color: rgba(238, 242, 255, 0.5);
+}
+
+.prediction-value {
+  color: #4f46e5;
+  font-weight: 800 !important;
+}
+
+.sintetica-value {
+  color: #ea580c;
+  font-weight: 600 !important;
+}
+
+.ejemplo-value {
+  color: #9333ea;
+  font-weight: 600 !important;
+}
+
+/* GRÁFICO */
+.chart-container {
+  background-color: white;
+  padding: 32px;
+  border-radius: 32px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.chart-wrapper {
+  height: 384px;
+  width: auto;
+}
+
+.chart-badge-container {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+
+.chart-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* MODO OSCURO */
+@media (prefers-color-scheme: dark) {
+  .dashboard-container {
+    background-color: #111827;
+  }
+  
+  .dashboard-title {
+    color: #f9fafb;
+  }
+  
+  .card {
+    background-color: #1f2937;
+    border: 1px solid #374151;
+  }
+  
+  .card-label {
+    color: #9ca3af;
+  }
+  
+  .trm-value {
+    color: #34c8d3ff;
+  }
+  
+  .table-container,
+  .chart-container {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+  
+  .section-title {
+    color: #f3f4f6;
+  }
+  
+  .prediction-table thead {
+    background-color: #374151;
+    color: #818cf8;
+  }
+  
+  .prediction-table th {
+    border-bottom-color: #4b5563;
+  }
+  
+  .prediction-table td {
+    color: #d1d5db;
+    border-bottom-color: #374151;
+  }
+  
+  .prediction-table tbody tr:hover {
+    background-color: rgba(55, 65, 81, 0.5);
+  }
+  
+  .tendencia-badge {
+    border-color: #1f2937;
+  }
+  
+  .error-message {
+    background-color: #7f1d1d;
+    color: #fca5a5;
+    border-color: #b91c1b;
+  }
+}
+</style>
