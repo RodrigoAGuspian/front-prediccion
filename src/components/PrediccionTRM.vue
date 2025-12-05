@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard-container">
     <h1 class="dashboard-title">
-      📈 Predicción TRM – Dashboard
+      Predicción TRM
     </h1>
     
     <div class="button-container">
@@ -14,10 +14,10 @@
 
     <div class="status-container">
       <div v-if="cargando" class="loading-message">
-        ⏳ Cargando datos, por favor espera...
+        Cargando datos, por favor espera...
       </div>
       <div v-if="error" class="error-message">
-        ⚠️ {{ error }}
+        {{ error }}
       </div>
     </div>
 
@@ -29,11 +29,6 @@
         <p class="card-value trm-value">
           {{ ultimoReal ? formatoCOP(ultimoReal) : '---' }}
         </p>
-        <span
-          class="tendencia-badge"
-          :class="badgeClass">
-          {{ tendenciaTexto }}
-        </span>
       </div>
 
       <div class="card">
@@ -43,12 +38,17 @@
         <p class="card-value" :class="diferenciaClass">
           {{ diferenciaPorcentaje }}
         </p>
+        <span
+          class="tendencia-badge"
+          :class="badgeClass">
+          {{ tendenciaTexto }}
+        </span>
       </div>
     </div>
 
     <div class="table-container">
       <h2 class="section-title">
-        📅 Predicciones TRM próximos 7 días
+        Predicciones TRM próximos 7 días
       </h2>
       <div class="table-wrapper">
         <table class="prediction-table">
@@ -112,10 +112,10 @@ export default {
     tendenciaTexto() {
       if (!this.prediccion.length || !this.ultimoReal) return "Sin datos";
       return this.prediccion[0] > this.ultimoReal
-        ? "📈 El dólar sube mañana"
+        ? "El dólar sube mañana"
         : this.prediccion[0] < this.ultimoReal
-        ? "📉 El dólar baja mañana"
-        : "➖ Sin cambios significativos";
+        ? "El dólar baja mañana"
+        : "Sin cambios significativos";
     },
     badgeClass() {
       if (!this.prediccion.length || !this.ultimoReal) 
@@ -391,12 +391,12 @@ export default {
 }
 
 .badge-sube {
-  background-color: #ef4444;
+  background-color: #10b981;
   color: white;
 }
 
 .badge-baja {
-  background-color: #10b981;
+  background-color: #ef4444;
   color: white;
 }
 
